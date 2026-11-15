@@ -7,17 +7,17 @@ import { jwt } from 'better-auth/plugins';
 
 import { db, mongoClient } from './db.js';
 
-// Backend URL (Render / Localhost)
+
 const serverUrl = (
   process.env.SERVER_URL || 'http://localhost:5000'
 ).replace(/\/+$/, '');
 
-// Frontend URL (Vercel / Localhost)
+
 const clientUrl = (
   process.env.CLIENT_URL || 'http://localhost:3000'
 ).replace(/\/+$/, '');
 
-// Google OAuth credentials
+
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
 
@@ -29,7 +29,7 @@ export const auth = betterAuth({
 
   appName: 'StudioSpace',
 
-  // MongoDB connection
+
   database: mongodbAdapter(
     db,
     process.env.MONGODB_REPLICA_SET === 'true'
@@ -37,25 +37,35 @@ export const auth = betterAuth({
       : {}
   ),
 
-  // Authentication secret
+
   secret: process.env.BETTER_AUTH_SECRET,
 
-  // IMPORTANT: Backend URL
+
   baseURL: serverUrl,
 
-  // Allow frontend requests
+
   trustedOrigins: [
-    clientUrl
+    clientUrl,
+
+
+    'https://studiospace-client-phi.vercel.app',
+
+
+    'https://studiospace-client-git-main-amir-405a.vercel.app',
+
+
+    'https://studiospace-client-ndd4es6e8-amir-405a.vercel.app',
+
+    'https://studiospace-client-*-amir-405a.vercel.app'
   ],
 
-  // Email and password authentication
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
     maxPasswordLength: 128
   },
 
-  // Google OAuth
+
   socialProviders: googleEnabled
     ? {
         google: {
@@ -70,7 +80,7 @@ export const auth = betterAuth({
     jwt()
   ],
 
-  // Database configuration
+
   advanced: {
     database: {
       joins: true
