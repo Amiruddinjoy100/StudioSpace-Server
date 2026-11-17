@@ -1,7 +1,7 @@
-
 import { SignJWT, jwtVerify } from 'jose';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth.js';
+import { isAllowedOrigin } from './origins.js';
 
 const cookieName = 'studio_access';
 const tokenLifetime = 24 * 60 * 60 * 1000;
@@ -10,9 +10,7 @@ function key() {
   const secret = process.env.STUDIO_JWT_SECRET;
 
   if (!secret || secret.length < 32) {
-    throw new Error(
-      'STUDIO_JWT_SECRET should be at least 32 characters'
-    );
+    throw new Error('STUDIO_JWT_SECRET should be at least 32 characters');
   }
 
   return new TextEncoder().encode(secret);
@@ -24,20 +22,9 @@ async function getAuthSession(req) {
   });
 }
 
-// Create JWT after successful Better Auth authentication
 export async function issueToken(req, res) {
   try {
-    console.log(
-      '[Security] Cookie header present:',
-      Boolean(req.headers.cookie)
-    );
-
     const session = await getAuthSession(req);
-
-    console.log(
-      '[Security] Better Auth session found:',
-      Boolean(session?.user)
-    );
 
     if (!session?.user) {
       return res.status(401).json({
@@ -66,7 +53,6 @@ export async function issueToken(req, res) {
     });
 
     return res.json({ ok: true });
-
   } catch (error) {
     console.error('[Security] Token creation failed:', error);
 
@@ -76,8 +62,7 @@ export async function issueToken(req, res) {
   }
 }
 
-// Clear authentication cookie
-export function clearToken(req, res) {
+export function clearToken(_req, res) {
   res.clearCookie(cookieName, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -88,7 +73,6 @@ export function clearToken(req, res) {
   return res.json({ ok: true });
 }
 
-// Verify authenticated user
 export async function requireUser(req, res, next) {
   try {
     const token = req.cookies?.[cookieName];
@@ -99,22 +83,14 @@ export async function requireUser(req, res, next) {
       });
     }
 
-    const { payload } = await jwtVerify(
-      token,
-      key(),
-      {
-        issuer: 'studiospace-api',
-        audience: 'studiospace-web'
-      }
-    );
+    const { payload } = await jwtVerify(token, key(), {
+      issuer: 'studiospace-api',
+      audience: 'studiospace-web'
+    });
 
-    // Verify that Better Auth session is still active
     const session = await getAuthSession(req);
 
-    if (
-      !session?.user ||
-      String(session.user.id) !== payload.sub
-    ) {
+    if (!session?.user || String(session.user.id) !== payload.sub) {
       return res.status(401).json({
         message: 'Session expired. Please sign in again'
       });
@@ -128,7 +104,6 @@ export async function requireUser(req, res, next) {
     };
 
     return next();
-
   } catch (error) {
     console.error('[Security] Authentication verification failed:', error.message);
 
@@ -138,30 +113,23 @@ export async function requireUser(req, res, next) {
   }
 }
 
-// Verify request origin
 export function verifyOrigin(req, res, next) {
   if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
     return next();
   }
 
-  const origin = req.headers.origin;
+  const origin = req.get('origin');
 
-  if (origin) {
-    try {
-      const allowedOrigin = new URL(
-        process.env.CLIENT_URL || 'http://localhost:3000'
-      ).origin;
+  if (!origin) {
+    return res.status(403).json({
+      message: 'Missing request origin'
+    });
+  }
 
-      if (new URL(origin).origin !== allowedOrigin) {
-        return res.status(403).json({
-          message: 'Untrusted request origin'
-        });
-      }
-    } catch {
-      return res.status(403).json({
-        message: 'Invalid request origin'
-      });
-    }
+  if (!isAllowedOrigin(origin)) {
+    return res.status(403).json({
+      message: 'Untrusted request origin'
+    });
   }
 
   return next();

@@ -21,7 +21,7 @@ npm run seed
 npm run dev
 ```
 
-Fill in `MONGODB_URI`, `BETTER_AUTH_SECRET`, and `STUDIO_JWT_SECRET` before starting. Read the root README for detailed setup and production cookie advice.
+Fill in `MONGODB_URI`, `BETTER_AUTH_SECRET`, and `STUDIO_JWT_SECRET` before starting. `CLIENT_URL` must be the public frontend origin. Add any additional approved frontend origins as comma-separated values in `CLIENT_URLS`. Read the root README for production setup.
 
 ## API routes
 
@@ -48,4 +48,13 @@ Fill in `MONGODB_URI`, `BETTER_AUTH_SECRET`, and `STUDIO_JWT_SECRET` before star
 npm test
 ```
 
-Test credentials after local seed: `examiner@studiospace.test` / `DemoPass123`. The seeded account owns the six example studios. Never seed default accounts in a public production database.
+Test credentials after local seed: `examiner@studiospace.test` / `DemoPass123`. The seeded account owns the six example studios. The seed script explicitly refuses to run when `NODE_ENV=production`; never use demo credentials on a public production database.
+
+
+## Production reverse-proxy configuration
+
+The browser sends `/api/*` requests to the Vercel origin. Next.js rewrites those requests to this Express service. Set `CLIENT_URL` on Render to `https://studiospace-client-phi.vercel.app`, and set `CLIENT_URLS` only to explicitly approved additional Vercel origins. Better Auth's `baseURL` is the public Vercel origin so Google OAuth callbacks return through the Vercel rewrite and the browser-facing host.
+
+Register this Google OAuth redirect URI:
+
+`https://studiospace-client-phi.vercel.app/api/auth/callback/google`

@@ -1,6 +1,10 @@
 import 'dotenv/config';
-import {connectDB,studios,mongoClient,db} from './db.js';
-import {auth} from './auth.js';
+import { connectDB, studios, mongoClient, db } from './db.js';
+import { auth } from './auth.js';
+
+if (process.env.NODE_ENV === 'production') {
+  throw new Error('The demo seed is disabled in production environments.');
+}
 
 // Local demonstration ONLY. Never deploy this account or run a public production seed.
 const email='examiner@studiospace.test';

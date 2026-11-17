@@ -6,17 +6,11 @@ import { mongodbAdapter } from '@better-auth/mongo-adapter';
 import { jwt } from 'better-auth/plugins';
 
 import { db, mongoClient } from './db.js';
-
-
-const serverUrl = (
-  process.env.SERVER_URL || 'http://localhost:5000'
-).replace(/\/+$/, '');
-
+import { getAllowedOrigins } from './origins.js';
 
 const clientUrl = (
   process.env.CLIENT_URL || 'http://localhost:3000'
-).replace(/\/+$/, '');
-
+).trim().replace(/\/+$/, '');
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
@@ -26,9 +20,7 @@ const googleEnabled = Boolean(
 );
 
 export const auth = betterAuth({
-
   appName: 'StudioSpace',
-
 
   database: mongodbAdapter(
     db,
@@ -37,34 +29,17 @@ export const auth = betterAuth({
       : {}
   ),
 
-
   secret: process.env.BETTER_AUTH_SECRET,
 
+  baseURL: clientUrl,
 
-  baseURL: serverUrl,
-
-
-  trustedOrigins: [
-    clientUrl,
-
-
-    'https://studiospace-client-phi.vercel.app',
-
-
-    'https://studiospace-client-git-main-amir-405a.vercel.app',
-
-
-    'https://studiospace-client-ndd4es6e8-amir-405a.vercel.app',
-
-    'https://studiospace-client-*-amir-405a.vercel.app'
-  ],
+  trustedOrigins: [...getAllowedOrigins()],
 
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
     maxPasswordLength: 128
   },
-
 
   socialProviders: googleEnabled
     ? {
@@ -75,16 +50,13 @@ export const auth = betterAuth({
       }
     : {},
 
-  // JWT plugin
   plugins: [
     jwt()
   ],
-
 
   advanced: {
     database: {
       joins: true
     }
   }
-
 });
