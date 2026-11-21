@@ -38,6 +38,33 @@ app.use(cors({
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS']
 }));
 
+
+let dbReady = null;
+
+function ensureDb() {
+  if (!dbReady) {
+    dbReady = connectDB().catch((error) => {
+      dbReady = null;
+      throw error;
+    });
+  }
+
+  return dbReady;
+}
+
+app.use(async (_req, res, next) => {
+  try {
+    await ensureDb();
+    next();
+  } catch (error) {
+    console.error('[DB] Connection failed:', error);
+
+    res.status(503).json({
+      message: 'Database unavailable. Please try again in a moment.'
+    });
+  }
+});
+
 app.all('/api/auth/*', toNodeHandler(auth));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
@@ -68,13 +95,17 @@ app.use((err, _req, res, _next) => {
 
 const port = Number(process.env.PORT || 5000);
 
-connectDB()
-  .then(() => {
-    app.listen(port, () => {
-      console.log(`StudioSpace server listening on port ${port}`);
+if (!process.env.VERCEL) {
+  ensureDb()
+    .then(() => {
+      app.listen(port, () => {
+        console.log(`StudioSpace server listening on port ${port}`);
+      });
+    })
+    .catch((error) => {
+      console.error('Startup failed:', error);
+      process.exit(1);
     });
-  })
-  .catch((error) => {
-    console.error('Startup failed:', error);
-    process.exit(1);
-  });
+}
+
+export default app;
